@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+models/iter_*.npz
+models/train.out

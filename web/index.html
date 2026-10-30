@@ -1,0 +1,659 @@
+<title>Четыре в ряд</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Onest:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a cedar board with stone-like discs on the left, a quiet control column on the right; stacked on phones. */
+:root {
+  --bg: #e6ebe9;
+  --surface: #f4f7f6;
+  --line: #c9d3d0;
+  --fg: #18211f;
+  --muted: #596864;
+  --accent: #2c6b5e;
+  --accent-fg: #f4f7f6;
+  --wood: #b77f47;
+  --wood-dark: #8f5b2c;
+  --hole: #6e4a2b;
+  --pearl-hi: #ffffff;
+  --pearl: #ece6d6;
+  --pearl-lo: #c4b99f;
+  --ink-hi: #6a6f7a;
+  --ink: #26282e;
+  --ink-lo: #0e0f12;
+  --win: #e2b43c;
+  --display: "Unbounded", "Segoe UI", system-ui, sans-serif;
+  --body: "Onest", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101615; --surface: #172020; --line: #2a3634; --fg: #e2e9e7; --muted: #92a39f;
+    --accent: #74c4b1; --accent-fg: #0f1716; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101615; --surface: #172020; --line: #2a3634; --fg: #e2e9e7; --muted: #92a39f;
+  --accent: #74c4b1; --accent-fg: #0f1716; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 40px;
+}
+.wrap { max-width: 1000px; margin: 0 auto; display: grid; gap: 24px; }
+
+header { display: grid; gap: 6px; }
+h1 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(28px, 6vw, 44px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+h1 .four { color: var(--accent); }
+.lede { margin: 0; color: var(--muted); max-width: 60ch; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
+@media (max-width: 820px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- board ---------- */
+.play { display: grid; gap: 12px; min-width: 0; }
+.status {
+  font-family: var(--display);
+  font-weight: 500;
+  font-size: 17px;
+  min-height: 1.6em;
+  display: flex; align-items: center; gap: 10px;
+}
+.status .dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+.status .progress { font-family: var(--mono); font-size: 13px; color: var(--muted); font-weight: 500; }
+
+.board-shell { width: 100%; max-width: 620px; }
+.preview { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 3.2%; aspect-ratio: 7 / 0.72; align-items: end; }
+.preview span { display: grid; place-items: center; padding-bottom: 4%; }
+.preview i { width: 62%; aspect-ratio: 1; border-radius: 50%; opacity: 0; transition: opacity .12s; }
+.preview i.show { opacity: .55; }
+
+.board {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 7.4 / 6.4;
+  border-radius: 14px;
+  background:
+    repeating-linear-gradient(97deg, rgba(255,255,255,.05) 0 2px, transparent 2px 9px, rgba(0,0,0,.05) 9px 11px, transparent 11px 23px),
+    linear-gradient(170deg, var(--wood), var(--wood-dark));
+  overflow: hidden;
+  box-shadow: 0 18px 30px -18px rgba(40, 25, 10, .55), inset 0 0 0 1px rgba(255,255,255,.12);
+}
+.holes, .grid, .frame, .cols { position: absolute; inset: 3.2%; }
+.holes { background: var(--hole); }
+.grid { display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(6, 1fr); overflow: hidden; }
+.cell { display: grid; place-items: center; }
+.disc { width: 84%; aspect-ratio: 1; border-radius: 50%; position: relative; }
+.p-pearl { background: radial-gradient(circle at 34% 30%, var(--pearl-hi), var(--pearl) 42%, var(--pearl-lo) 100%); }
+.p-ink { background: radial-gradient(circle at 34% 30%, var(--ink-hi), var(--ink) 45%, var(--ink-lo) 100%); }
+.disc.drop { animation: drop calc(0.22s + var(--fall) * 0.045s) cubic-bezier(.45, 0, .9, .55) both; }
+@keyframes drop {
+  from { transform: translateY(calc(var(--fall) * -119%)); }
+  82% { transform: translateY(0); }
+  91% { transform: translateY(-6%); }
+  to { transform: translateY(0); }
+}
+.disc.last::after {
+  content: ""; position: absolute; inset: 38%; border-radius: 50%;
+  background: currentColor; opacity: .35;
+}
+.p-pearl.last { color: #8a7a55; }
+.p-ink.last { color: #a9afbb; }
+.disc.winning { box-shadow: 0 0 0 3px var(--win), 0 0 18px 2px var(--win); }
+
+/* wooden face with round holes cut by a tiled radial mask */
+.frame {
+  background:
+    repeating-linear-gradient(97deg, rgba(255,255,255,.05) 0 2px, transparent 2px 9px, rgba(0,0,0,.05) 9px 11px, transparent 11px 23px),
+    linear-gradient(170deg, var(--wood), var(--wood-dark));
+  background-attachment: local;
+  -webkit-mask: radial-gradient(circle closest-side, transparent 86%, #000 88%) 0 0 / calc(100% / 7) calc(100% / 6) repeat;
+          mask: radial-gradient(circle closest-side, transparent 86%, #000 88%) 0 0 / calc(100% / 7) calc(100% / 6) repeat;
+  pointer-events: none;
+}
+.frame::before {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(circle closest-side, rgba(0,0,0,.42) 87%, rgba(0,0,0,0) 100%) 0 0 / calc(100% / 7) calc(100% / 6) repeat;
+}
+.cols { display: grid; grid-template-columns: repeat(7, 1fr); }
+.cols button {
+  appearance: none; border: 0; background: transparent; cursor: pointer; padding: 0; border-radius: 8px;
+}
+.cols button:focus-visible { outline: 3px solid var(--win); outline-offset: -3px; }
+.cols button:disabled { cursor: default; }
+
+.thoughts { max-width: 620px; display: grid; gap: 4px; }
+.thoughts-row { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 3.2%; gap: 4px; align-items: end; height: 54px; }
+.thoughts-row .bar { display: grid; justify-items: center; align-content: end; gap: 2px; height: 100%; }
+.thoughts-row .fill { width: 46%; background: var(--line); border-radius: 3px 3px 0 0; min-height: 2px; transition: height .3s; }
+.thoughts-row .bar.chosen .fill { background: var(--accent); }
+.thoughts-row .pct { font-family: var(--mono); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.thoughts-cap { font-size: 12.5px; color: var(--muted); padding: 0 3.2%; }
+
+/* ---------- panel ---------- */
+.panel { display: grid; gap: 22px; min-width: 0; }
+.group { display: grid; gap: 8px; }
+.label { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.seg { display: grid; grid-template-columns: repeat(2, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.seg.four { grid-template-columns: repeat(4, 1fr); }
+.seg button {
+  appearance: none; border: 0; background: transparent; color: var(--fg); font: inherit; font-size: 13.5px;
+  padding: 9px 4px; cursor: pointer; border-left: 1px solid var(--line);
+}
+.seg button:first-child { border-left: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.seg button:focus-visible, .actions button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hint { font-size: 12.5px; color: var(--muted); margin: 0; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.actions button {
+  appearance: none; font: inherit; font-weight: 600; font-size: 14px; border-radius: 10px; padding: 10px 16px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--accent-fg);
+}
+.actions button.ghost { background: transparent; color: var(--fg); border-color: var(--line); }
+.actions button:disabled { opacity: .45; cursor: default; }
+
+.meter { display: grid; gap: 6px; }
+.meter-bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; border: 1px solid var(--line); }
+.meter-bar .h { background: linear-gradient(var(--pearl-hi), var(--pearl-lo)); transition: flex-grow .4s; }
+.meter-bar .a { background: linear-gradient(var(--ink-hi), var(--ink-lo)); transition: flex-grow .4s; }
+.meter-legend { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+
+.score { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.score div { display: grid; padding: 10px 0; }
+.score div + div { border-left: 1px solid var(--line); padding-left: 12px; }
+.score b { font-family: var(--display); font-weight: 500; font-size: 22px; font-variant-numeric: tabular-nums; }
+.score span { font-size: 12px; color: var(--muted); }
+
+.model { font-size: 13px; color: var(--muted); margin: 0; }
+.model code { font-family: var(--mono); font-size: 12px; color: var(--fg); }
+.swatch { display: inline-block; width: 11px; height: 11px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .disc.drop { animation: none; }
+  .meter-bar .h, .meter-bar .a, .thoughts-row .fill { transition: none; }
+}
+</style>
+
+<main class="wrap">
+  <header>
+    <h1>Четыре в&nbsp;ряд <span class="four">против&nbsp;ИИ</span></h1>
+    <p class="lede" id="lede">Нейросеть научилась этой игре сама: она играла против себя тысячи партий и училась на своих ошибках. Соберите четыре фишки подряд по горизонтали, вертикали или диагонали раньше неё.</p>
+  </header>
+
+  <div class="layout">
+    <section class="play" aria-label="Игровое поле">
+      <div class="status" id="status" aria-live="polite"></div>
+      <div class="board-shell">
+        <div class="preview" id="preview" aria-hidden="true"></div>
+        <div class="board" id="board">
+          <div class="holes"></div>
+          <div class="grid" id="grid"></div>
+          <div class="frame"></div>
+          <div class="cols" id="cols"></div>
+        </div>
+      </div>
+      <div class="thoughts" id="thoughts">
+        <div class="thoughts-row" id="thoughtsRow"></div>
+        <div class="thoughts-cap" id="thoughtsCap">Здесь появится, какие столбцы ИИ рассматривал на последнем ходу.</div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="group">
+        <div class="label">Первый ход</div>
+        <div class="seg" id="firstSeg">
+          <button type="button" id="firstHuman" data-first="human">Мой</button>
+          <button type="button" id="firstAi" data-first="ai">ИИ</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">Сила ИИ</div>
+        <div class="seg four" id="levelSeg">
+          <button type="button" id="lv0" data-level="0">Новичок</button>
+          <button type="button" id="lv1" data-level="1">Средний</button>
+          <button type="button" id="lv2" data-level="2">Сильный</button>
+          <button type="button" id="lv3" data-level="3">Максимум</button>
+        </div>
+        <p class="hint" id="levelHint"></p>
+      </div>
+
+      <div class="actions">
+        <button type="button" id="newGame">Новая игра</button>
+        <button type="button" class="ghost" id="undo">Отменить ход</button>
+      </div>
+
+      <div class="meter">
+        <div class="label">Как ИИ видит позицию</div>
+        <div class="meter-bar"><div class="h" id="mh" style="flex-grow:50"></div><div class="a" id="ma" style="flex-grow:50"></div></div>
+        <div class="meter-legend"><span id="mhl">Вы 50%</span><span id="mal">ИИ 50%</span></div>
+      </div>
+
+      <div class="group">
+        <div class="label">Счёт</div>
+        <div class="score">
+          <div><b id="sW">0</b><span>ваши победы</span></div>
+          <div><b id="sD">0</b><span>ничьи</span></div>
+          <div><b id="sL">0</b><span>победы ИИ</span></div>
+        </div>
+      </div>
+
+      <p class="model" id="model"></p>
+    </aside>
+  </div>
+</main>
+
+<script src="weights.js"></script>
+<script>
+(() => {
+  const W = 7, H = 6, N = 42;
+  const LEVELS = [
+    { name: "Новичок", sims: 0, hint: "Ходит по первому впечатлению сети, без расчёта вариантов." },
+    { name: "Средний", sims: 60, hint: "Просчитывает 60 вариантов за ход." },
+    { name: "Сильный", sims: 400, hint: "Просчитывает 400 вариантов за ход." },
+    { name: "Максимум", sims: 2000, hint: "Просчитывает 2000 вариантов за ход. Думает пару секунд." },
+  ];
+  const C_PUCT = 1.5;
+
+  // ---------- network ----------
+  function b64f32(s) {
+    const bin = atob(s), u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    return new Float32Array(u.buffer);
+  }
+  const WD = window.C4_WEIGHTS;
+  const unpack = (l) => ({ in: l.in, out: l.out, W: b64f32(l.W), b: b64f32(l.b) });
+  const hidden = WD.hidden.map(unpack), pol = unpack(WD.policy), v1 = unpack(WD.value1), v2 = unpack(WD.value2);
+
+  function dense(x, L, relu) {
+    const out = new Float32Array(L.out);
+    out.set(L.b);
+    const Wt = L.W, n = L.out;
+    for (let i = 0; i < L.in; i++) {
+      const xi = x[i];
+      if (xi === 0) continue;
+      const off = i * n;
+      for (let j = 0; j < n; j++) out[j] += xi * Wt[off + j];
+    }
+    if (relu) for (let j = 0; j < n; j++) if (out[j] < 0) out[j] = 0;
+    return out;
+  }
+  function softmax(z) {
+    let m = -Infinity;
+    for (const v of z) if (v > m) m = v;
+    const e = z.map((v) => Math.exp(v - m));
+    const s = e.reduce((a, b) => a + b, 0);
+    return e.map((v) => v / s);
+  }
+  function forward(x) {
+    let h = x;
+    for (const L of hidden) h = dense(h, L, true);
+    const probs = softmax(dense(h, pol, false));
+    const v = Math.tanh(dense(dense(h, v1, true), v2, false)[0]);
+    return { probs, v };
+  }
+  function encode(board, p, mirror) {
+    const x = new Float32Array(84);
+    for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
+      const v = board[r * W + c];
+      if (!v) continue;
+      x[(v === p ? 0 : 42) + r * W + (mirror ? W - 1 - c : c)] = 1;
+    }
+    return x;
+  }
+  // average the position and its mirror image for a steadier evaluation
+  function evaluate(st) {
+    const a = forward(encode(st.board, st.toMove, false));
+    const b = forward(encode(st.board, st.toMove, true));
+    const probs = new Float32Array(W);
+    for (let c = 0; c < W; c++) probs[c] = (a.probs[c] + b.probs[W - 1 - c]) / 2;
+    return { probs, v: (a.v + b.v) / 2 };
+  }
+
+  // ---------- rules ----------
+  function newState() {
+    return { board: new Int8Array(N), heights: new Int8Array(W), toMove: 1, moves: 0 };
+  }
+  function canPlay(st, c) { return st.heights[c] < H; }
+  function legal(st) { const m = []; for (let c = 0; c < W; c++) if (canPlay(st, c)) m.push(c); return m; }
+  function lineAt(board, r, c, p) {
+    for (const [dr, dc] of [[0, 1], [1, 0], [1, 1], [1, -1]]) {
+      const cells = [[r, c]];
+      for (const s of [1, -1]) {
+        let rr = r + dr * s, cc = c + dc * s;
+        while (rr >= 0 && rr < H && cc >= 0 && cc < W && board[rr * W + cc] === p) {
+          cells.push([rr, cc]); rr += dr * s; cc += dc * s;
+        }
+      }
+      if (cells.length >= 4) return cells;
+    }
+    return null;
+  }
+  function play(st, c) {
+    const board = st.board.slice(), heights = st.heights.slice();
+    const r = heights[c]++;
+    board[r * W + c] = st.toMove;
+    const line = lineAt(board, r, c, st.toMove);
+    return { st: { board, heights, toMove: 3 - st.toMove, moves: st.moves + 1 }, won: !!line, line, row: r };
+  }
+
+  // ---------- MCTS ----------
+  class Node {
+    constructor(st, terminal = false, tvalue = 0) {
+      this.st = st; this.terminal = terminal; this.tvalue = tvalue;
+      this.expanded = false; this.children = new Array(W); this.nTotal = 0;
+    }
+    expand(probs) {
+      this.legal = legal(this.st);
+      let s = 0;
+      for (const a of this.legal) s += probs[a];
+      this.P = new Float32Array(W); this.N = new Int32Array(W); this.W = new Float32Array(W);
+      for (const a of this.legal) this.P[a] = s > 0 ? probs[a] / s : 1 / this.legal.length;
+      this.expanded = true;
+    }
+    select() {
+      const sq = Math.sqrt(this.nTotal + 1);
+      let best = -1, bestScore = -Infinity;
+      for (const a of this.legal) {
+        const n = this.N[a];
+        const score = (n ? this.W[a] / n : 0) + C_PUCT * this.P[a] * sq / (1 + n);
+        if (score > bestScore) { best = a; bestScore = score; }
+      }
+      return best;
+    }
+    child(a) {
+      let ch = this.children[a];
+      if (!ch) {
+        const res = play(this.st, a);
+        if (res.won) ch = new Node(res.st, true, -1);
+        else if (res.st.moves >= N) ch = new Node(res.st, true, 0);
+        else ch = new Node(res.st);
+        this.children[a] = ch;
+      }
+      return ch;
+    }
+  }
+  function simulate(root) {
+    let node = root;
+    const path = [];
+    while (node.expanded && !node.terminal) {
+      const a = node.select();
+      path.push([node, a]);
+      node = node.child(a);
+    }
+    let v;
+    if (node.terminal) v = node.tvalue;
+    else { const e = evaluate(node.st); node.expand(e.probs); v = e.v; }
+    for (let i = path.length - 1; i >= 0; i--) {
+      v = -v;
+      const [p, a] = path[i];
+      p.N[a] += 1; p.W[a] += v; p.nTotal += 1;
+    }
+  }
+  async function think(st, sims, onProgress, isCancelled) {
+    const root = new Node(st);
+    const e = evaluate(st);
+    root.expand(e.probs);
+    if (sims === 0) {
+      // novice: sample from the network's raw move preferences
+      let r = Math.random(), pick = root.legal[root.legal.length - 1];
+      for (const a of root.legal) { r -= root.P[a]; if (r <= 0) { pick = a; break; } }
+      return { move: pick, share: Array.from(root.P), q: e.v };
+    }
+    let done = 0;
+    while (done < sims) {
+      const t0 = performance.now();
+      while (done < sims && performance.now() - t0 < 24) { simulate(root); done++; }
+      onProgress(done, sims);
+      await new Promise((r) => setTimeout(r, 0));
+      if (isCancelled()) return null;
+    }
+    let move = root.legal[0];
+    for (const a of root.legal) if (root.N[a] > root.N[move] || (root.N[a] === root.N[move] && root.P[a] > root.P[move])) move = a;
+    let q = 0;
+    for (const a of root.legal) q += root.W[a];
+    q /= Math.max(1, root.nTotal);
+    const share = Array.from(root.N, (n) => n / Math.max(1, root.nTotal));
+    return { move, share, q };
+  }
+
+  // ---------- UI ----------
+  const $ = (id) => document.getElementById(id);
+  const gridEl = $("grid"), colsEl = $("cols"), previewEl = $("preview");
+  const cells = [];
+  for (let r = H - 1; r >= 0; r--) for (let c = 0; c < W; c++) {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    gridEl.appendChild(cell);
+    cells[r * W + c] = cell;
+  }
+  const colBtns = [], previews = [], bars = [];
+  for (let c = 0; c < W; c++) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("aria-label", "Бросить фишку в столбец " + (c + 1));
+    b.addEventListener("click", () => humanMove(c));
+    b.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") showPreview(c); });
+    b.addEventListener("pointerleave", () => showPreview(-1));
+    b.addEventListener("focus", () => { if (b.matches(":focus-visible")) showPreview(c); });
+    b.addEventListener("blur", () => showPreview(-1));
+    colsEl.appendChild(b); colBtns.push(b);
+    const s = document.createElement("span"), i = document.createElement("i");
+    s.appendChild(i); previewEl.appendChild(s); previews.push(i);
+    const bar = document.createElement("div");
+    bar.className = "bar";
+    bar.innerHTML = '<div class="fill" style="height:2px"></div><div class="pct">–</div>';
+    $("thoughtsRow").appendChild(bar); bars.push(bar);
+  }
+
+  let game, aiFirst = false, level = 2, busy = false, token = 0, score = { w: 0, d: 0, l: 0 };
+  try { const s = JSON.parse(localStorage.getItem("c4-score") || "null"); if (s) score = s; } catch (e) {}
+  try { const l = localStorage.getItem("c4-level"); if (l !== null) level = Math.min(3, Math.max(0, +l)); } catch (e) {}
+
+  const aiPlayer = () => (aiFirst ? 1 : 2);
+  const humanPlayer = () => (aiFirst ? 2 : 1);
+  const colorOf = (p) => (p === humanPlayer() ? "p-pearl" : "p-ink");
+
+  function replay(history) {
+    let st = newState(), last = null;
+    for (const c of history) last = play(st, c), st = last.st;
+    return { st, history: history.slice(), over: last && (last.won || last.st.moves >= N) ? last : null, last };
+  }
+
+  function render(animate) {
+    const { st, last } = game;
+    for (let i = 0; i < N; i++) {
+      const v = st.board[i], cell = cells[i];
+      cell.innerHTML = "";
+      if (!v) continue;
+      const d = document.createElement("div");
+      d.className = "disc " + colorOf(v);
+      cell.appendChild(d);
+    }
+    if (last) {
+      const c = game.history[game.history.length - 1];
+      const d = cells[last.row * W + c].firstChild;
+      d.classList.add("last");
+      if (animate) { d.style.setProperty("--fall", H - last.row); d.classList.add("drop"); }
+      if (last.won) for (const [r, cc] of last.line) cells[r * W + cc].firstChild.classList.add("winning");
+    }
+    const humanTurn = !game.over && st.toMove === humanPlayer() && !busy;
+    colBtns.forEach((b, c) => (b.disabled = !humanTurn || !canPlay(st, c)));
+    $("undo").disabled = busy || !game.history.some((_, i) => (i % 2 === 0) === !aiFirst);
+    updateStatus();
+    renderScore();
+  }
+
+  function setStatus(text, dotClass, extra) {
+    const el = $("status");
+    el.innerHTML = "";
+    if (dotClass) { const d = document.createElement("span"); d.className = "dot " + dotClass; el.appendChild(d); }
+    el.appendChild(document.createTextNode(text));
+    if (extra) { const p = document.createElement("span"); p.className = "progress"; p.id = "progress"; p.textContent = extra; el.appendChild(p); }
+  }
+  function updateStatus() {
+    const { over } = game;
+    if (over) {
+      if (!over.won) setStatus("Ничья. Поле заполнено.", null);
+      else if (game.st.toMove === aiPlayer()) setStatus("Вы победили!", "p-pearl");
+      else setStatus("ИИ победил. Попробуйте ещё раз.", "p-ink");
+    } else if (busy) setStatus("ИИ думает…", "p-ink", LEVELS[level].sims ? "0 / " + LEVELS[level].sims : "");
+    else setStatus("Ваш ход: выберите столбец", "p-pearl");
+  }
+  function showPreview(c) {
+    previews.forEach((p, i) => {
+      p.className = (i === c ? "show " : "") + colorOf(humanPlayer());
+    });
+    if (c >= 0 && colBtns[c].disabled) previews[c].classList.remove("show");
+  }
+  function renderScore() {
+    $("sW").textContent = score.w; $("sD").textContent = score.d; $("sL").textContent = score.l;
+  }
+  function setMeter(aiChance) {
+    const a = Math.round(aiChance * 100), h = 100 - a;
+    $("mh").style.flexGrow = h; $("ma").style.flexGrow = a;
+    $("mhl").textContent = "Вы " + h + "%"; $("mal").textContent = "ИИ " + a + "%";
+  }
+  function setThoughts(share, chosen, novice) {
+    bars.forEach((bar, c) => {
+      const s = share ? share[c] : 0;
+      bar.classList.toggle("chosen", share && c === chosen);
+      bar.querySelector(".fill").style.height = share ? Math.max(2, s * 40) + "px" : "2px";
+      bar.querySelector(".pct").textContent = share ? Math.round(s * 100) + "%" : "–";
+    });
+    $("thoughtsCap").textContent = !share
+      ? "Здесь появится, какие столбцы ИИ рассматривал на последнем ходу."
+      : novice
+        ? "Первое впечатление сети: насколько ей нравится каждый столбец."
+        : "Доля вариантов, которые ИИ просчитал в каждом столбце. Зелёный — выбранный ход.";
+  }
+
+  function finish() {
+    const o = game.over;
+    if (!o) return;
+    if (!o.won) score.d++;
+    else if (game.st.toMove === aiPlayer()) score.w++;
+    else score.l++;
+    try { localStorage.setItem("c4-score", JSON.stringify(score)); } catch (e) {}
+    if (o.won) setMeter(game.st.toMove === aiPlayer() ? 0 : 1);
+  }
+
+  function humanMove(c) {
+    if (busy || game.over || game.st.toMove !== humanPlayer() || !canPlay(game.st, c)) return;
+    game = replay(game.history.concat(c));
+    render(true);
+    showPreview(-1);
+    if (game.over) return finish();
+    setTimeout(aiMove, 280);
+  }
+
+  async function aiMove() {
+    if (game.over || game.st.toMove !== aiPlayer()) return;
+    const my = ++token;
+    busy = true; render(false);
+    const res = await think(game.st, LEVELS[level].sims, (d, t) => {
+      const p = document.getElementById("progress");
+      if (p) p.textContent = d + " / " + t;
+    }, () => my !== token);
+    if (!res || my !== token) return;
+    busy = false;
+    game = replay(game.history.concat(res.move));
+    setMeter((res.q + 1) / 2);
+    setThoughts(res.share, res.move, LEVELS[level].sims === 0);
+    render(true);
+    if (game.over) finish();
+  }
+
+  function newGame() {
+    token++; busy = false;
+    game = replay([]);
+    setMeter(0.5); setThoughts(null);
+    render(false);
+    if (aiFirst) setTimeout(aiMove, 250);
+  }
+
+  function undo() {
+    if (busy) return;
+    const h = game.history.slice();
+    const wasOver = game.over;
+    // remove moves until a human move has been taken back
+    while (h.length) {
+      const moverIsHuman = ((h.length - 1) % 2 === 0) === !aiFirst;
+      h.pop();
+      if (moverIsHuman) break;
+    }
+    if (wasOver) { // take the finished game off the score
+      if (!wasOver.won) score.d--;
+      else if (game.st.toMove === aiPlayer()) score.w--;
+      else score.l--;
+      try { localStorage.setItem("c4-score", JSON.stringify(score)); } catch (e) {}
+    }
+    game = replay(h);
+    setThoughts(null);
+    render(false);
+  }
+
+  function syncControls() {
+    $("firstHuman").setAttribute("aria-pressed", String(!aiFirst));
+    $("firstAi").setAttribute("aria-pressed", String(aiFirst));
+    LEVELS.forEach((_, i) => $("lv" + i).setAttribute("aria-pressed", String(i === level)));
+    $("levelHint").textContent = LEVELS[level].hint;
+  }
+
+  $("firstHuman").addEventListener("click", () => { if (aiFirst) { aiFirst = false; syncControls(); newGame(); } });
+  $("firstAi").addEventListener("click", () => { if (!aiFirst) { aiFirst = true; syncControls(); newGame(); } });
+  document.querySelectorAll("[data-level]").forEach((b) => b.addEventListener("click", () => {
+    level = +b.dataset.level;
+    try { localStorage.setItem("c4-level", String(level)); } catch (e) {}
+    syncControls();
+  }));
+  $("newGame").addEventListener("click", newGame);
+  $("undo").addEventListener("click", undo);
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest && e.target.closest("input, textarea")) return;
+    const k = +e.key;
+    if (k >= 1 && k <= 7) humanMove(k - 1);
+  });
+
+  const meta = WD.meta || {};
+  const sizes = hidden.map((l) => l.out).join("–");
+  $("model").innerHTML =
+    '<span class="swatch p-pearl"></span>ваши фишки &nbsp;<span class="swatch p-ink"></span>фишки ИИ<br>' +
+    "Сеть: полносвязная, слои <code>" + sizes + "</code>, " +
+    "обучена на <code>" + (meta.games || 0).toLocaleString("ru-RU") + "</code> партиях игры с собой " +
+    "(<code>" + ((meta.iteration ?? -1) + 1) + "</code> циклов обучения). Клавиши 1–7 тоже работают.";
+  if (meta.games) $("lede").textContent =
+    "Нейросеть научилась этой игре сама: она сыграла против себя " + meta.games.toLocaleString("ru-RU") +
+    " партий и училась на своих ошибках. Соберите четыре фишки подряд по горизонтали, вертикали или диагонали раньше неё.";
+
+  function start(data) {
+    aiFirst = !!data.aiFirst;
+    if (typeof data.level === "number") level = data.level;
+    syncControls();
+    game = replay(Array.isArray(data.history) ? data.history : []);
+    setMeter(0.5); setThoughts(null);
+    render(false);
+    if (!game.over && game.st.toMove === aiPlayer()) setTimeout(aiMove, 250);
+  }
+  window.claude?.hot?.snapshot?.(() => ({ history: game.history, aiFirst, level }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
