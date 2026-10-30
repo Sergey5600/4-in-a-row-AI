@@ -1,0 +1,9 @@
+{"iter": 0, "games": 600, "buffer": 27000, "steps": 210, "lr": 0.001, "policy_loss": 1.8712, "value_loss": 0.204, "first_wins": 342, "second_wins": 229, "draws": 29, "avg_len": 22.5, "t_play": 26.5, "t_train": 4.0}
+{"iter": 1, "games": 1200, "buffer": 57838, "steps": 240, "lr": 0.001, "policy_loss": 1.7353, "value_loss": 0.1741, "first_wins": 279, "second_wins": 262, "draws": 59, "avg_len": 25.7, "t_play": 34.2, "t_train": 4.6}
+{"iter": 2, "games": 1800, "buffer": 92530, "steps": 271, "lr": 0.001, "policy_loss": 1.6086, "value_loss": 0.175, "first_wins": 260, "second_wins": 284, "draws": 56, "avg_len": 28.9, "t_play": 37.9, "t_train": 4.9}
+{"iter": 3, "games": 2400, "buffer": 128120, "steps": 278, "lr": 0.001, "policy_loss": 1.5261, "value_loss": 0.1743, "first_wins": 269, "second_wins": 274, "draws": 57, "avg_len": 29.7, "t_play": 43.0, "t_train": 5.4}
+{"iter": 4, "games": 3000, "buffer": 164124, "steps": 281, "lr": 0.001, "policy_loss": 1.4614, "value_loss": 0.1682, "first_wins": 264, "second_wins": 251, "draws": 85, "avg_len": 30.0, "t_play": 41.1, "t_train": 5.1}
+{"iter": 5, "games": 3600, "buffer": 200414, "steps": 283, "lr": 0.001, "policy_loss": 1.4183, "value_loss": 0.1646, "first_wins": 299, "second_wins": 207, "draws": 94, "avg_len": 30.2, "t_play": 41.0, "t_train": 5.1}
+{"iter": 6, "games": 4200, "buffer": 237194, "steps": 287, "lr": 0.001, "policy_loss": 1.374, "value_loss": 0.1612, "first_wins": 328, "second_wins": 156, "draws": 116, "avg_len": 30.6, "t_play": 40.7, "t_train": 5.1}
+{"iter": 7, "games": 4800, "buffer": 274730, "steps": 293, "lr": 0.001, "policy_loss": 1.3359, "value_loss": 0.1574, "first_wins": 274, "second_wins": 186, "draws": 140, "avg_len": 31.3, "t_play": 47.3, "t_train": 6.3}
+{"iter": 8, "games": 5400, "buffer": 311020, "steps": 283, "lr": 0.001, "policy_loss": 1.3082, "value_loss": 0.1553, "first_wins": 317, "second_wins": 177, "draws": 106, "avg_len": 30.2, "t_play": 49.9, "t_train": 5.7}
